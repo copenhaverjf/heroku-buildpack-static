@@ -56,6 +56,10 @@ http {
   <% end %>
 
   location / {
+        try_files $uri @prerender;
+    }
+ 
+  location @prerender {
       proxy_set_header X-Prerender-Token <%= prerender_token %>;
       
       set $prerender 0;
@@ -83,14 +87,18 @@ http {
           proxy_pass http://$prerender;
       }
       if ($prerender = 0) {
-          mruby_post_read_handler /app/bin/config/lib/ngx_mruby/headers.rb cache;
-          mruby_set $fallback /app/bin/config/lib/ngx_mruby/routes_fallback.rb cache;
-        <% if clean_urls %>
-          try_files $uri.html $uri $uri/ $fallback;
-        <% else %>
-          try_files $uri $uri/ $fallback;
-        <% end %>
+          rewrite .* /index.html break;
       }
+  }
+
+  location / {
+      mruby_post_read_handler /app/bin/config/lib/ngx_mruby/headers.rb cache;
+      mruby_set $fallback /app/bin/config/lib/ngx_mruby/routes_fallback.rb cache;
+    <% if clean_urls %>
+      try_files $uri.html $uri $uri/ $fallback;
+    <% else %>
+      try_files $uri $uri/ $fallback;
+    <% end %>
   }
 
   <% if clean_urls %>
